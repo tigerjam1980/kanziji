@@ -1,0 +1,71 @@
+SKILL.md
+name: restart50
+description: This skill builds a "50天重启人生" (Project 50 / The Great Lock In) personal challenge workspace — a single-file HTML habit-tracking dashboard with 8 customizable daily rules, 50-day calendar heatmap, completion-rate charts, a searchable reflection knowledge base, and weekly reports. Use this skill when the user wants to create, customize, or iterate on a 50-day self-restart challenge workspace, daily habit tracker, or similar gamified self-improvement dashboard.
+agent_created: true
+50天重启人生工作台 (Restart50)
+Overview
+This skill produces a single-file HTML workspace for running a "50天重启人生" (50-Day Life Restart) challenge — a habit-formation program where the user follows a fixed set of daily rules for 50 days (the researched "golden window" for habit formation). It is derived from the viral Project 50 / The Great Lock In challenge, tuned with the highest-rated改良 practices (low-config version, single-rule streak isolation).
+
+The workspace tracks 8 customizable daily rules, visualizes 50-day progress (calendar heatmap + completion ring + per-rule bars + trend line), stores daily journals/reviews into a searchable local knowledge base, and generates weekly reports.
+
+Trigger phrases: "50天重启人生", "Project 50", "重启人生工作台", "习惯打卡台", "50天挑战", "打卡看板".
+
+Why the "Low-Config" Design (核心设计原则)
+Research consensus from reviewed sources (Project 50 originals, 低配版, 30天/100天 variants, Glow Up challenges):
+
+Perfectionism is the #1 cause of abandonment. Therefore:
+Single-rule streak isolation: breaking ONE rule resets only that rule's streak, NOT the whole challenge (contrary to the original "back to Day 1" rule). This is the highest-rated改良.
+Rules must be quantifiable & checkable: boolean rules = checkbox; numeric rules = fill a number, auto-mark met when reaching target.
+Visual gamification is the fuel: calendar heatmap, completion ring, trend line give visible progress.
+Reflection ≠ check-in: journal (progress log) and review (feelings/lessons) are separate entries, both searchable.
+"Show up > perfect": partial completion still counts toward rate.
+Data Model (数据结构 — 已验证)
+// 规则定义：每条 = {id, name, desc, type:'bool'|'num', target, unit}
+const RULES = [
+  {id:'r1', name:'23点前上床且不用手机 / 7点前起（睡≥6h）', type:'bool'},
+  {id:'r2', name:'晨间1小时专注仪式', type:'bool'},
+  {id:'r3', name:'运动30分钟（核心/腰背/颈椎/引体向上）', type:'num', target:30, unit:'分钟'},
+  {id:'r4', name:'阅读30页+写感悟', type:'num', target:30, unit:'页'},
+  {id:'r5', name:'学新技能1小时（英语≥15分/带货/AI）', type:'num', target:60, unit:'分钟'},
+  {id:'r6', name:'健康饮食', type:'bool'},
+  {id:'r7', name:'写日记记录进度', type:'bool'},
+  {id:'r8', name:'每日复盘（感受与收获）', type:'bool'},
+];
+
+// 每日打卡：{dateStr: {rid: value}}  value = true/false 或 数值
+// 日记/复盘：[{date, mood, diary, review, ts}]
+Key Calculations (关键计算逻辑)
+单条完成度 = 数值项 min(1, 实际/目标)；布尔项 0/1。
+当天完成率 = 8 条完成度均值。
+整体连击 = 从今天往前数连续有打卡(rate>0)的天数。
+各规则连续天数 = 从今天往前数该条达标的连续天数。
+最长连击 = 50 天内最长连续打卡段。
+Build Standard (搭建规范 — 铁律)
+Produce a single self-contained HTML file satisfying ALL of the following (no exceptions):
+
+Zero external dependencies: all CSS/JS/SVG inline; no CDN/framework/font links. Offline-capable.
+Charts hand-drawn in inline SVG: ring (completion %), 50-cell calendar heatmap, per-rule bar chart, trend line. No chart library.
+Icons inline SVG paths, never emoji-as-icon.
+Responsive dual-end: PC sidebar nav → mobile bottom Tab; buttons ≥44px; inputs ≥16px; padding-bottom: env(safe-area-inset-bottom).
+"今天要处理" pinned top: overdue/unfinished items listed + one-click complete button.
+Seed 3-5 sample days (incl. 1 interrupted) on first open; provide "清空示例" button. Never ship a blank first screen.
+Module cap 3-4; this workspace uses 5 (check-in, board, journal, knowledge base, report) — acceptable because journal+KB are tightly coupled to rule 7&8.
+Domestic conventions: completion ring red/green per CN habit (here orange main); date YYYY-MM-DD; ¥ if money involved.
+Data safety: localStorage with key prefix wb_restart50_; JSON export/import (supports thousands of rows, no cap); clear data = double confirm.
+Storage fallback: prefer 资料库 skill (library) for cloud sync + online URL when available; fall back to local single-file when unavailable (current default).
+Workspace Modules
+今日打卡 (Check-in): "今天要处理" top zone; 8 rule rows (checkbox or number input + auto-met badge); live per-rule streak; overall streak.
+50天看板 (Board): KPI cards (current day / avg rate / longest streak / done days) + completion ring + 50-cell calendar heatmap + per-rule bar chart.
+成长日记 (Journal): mood picker + diary (rule7) + review (rule8) dual fields; timeline list.
+复盘知识库 (Knowledge Base): ALL journals/reviews searchable by keyword (full-text highlight) + filter by mood.
+数据复盘 (Report): one-click 7-day weekly report (per-rule hit counts) + completion trend line.
+Workflow
+Confirm rules & mode with the user (≤2 rounds): use the 8 rules above as default, or accept user's custom list (5-9 rules recommended). Ask: rule list / device priority / modules / deploy-online-or-local.
+Load 资料库 skill first (skill name library). If available → cloud-hosted (data table + online page URL). If unavailable → local single-file + localStorage (current path).
+Generate the single-file HTML per Build Standard, embedding the user's RULES array and calculations.
+Self-check: HTML structure closed, 8 rules present, zero external http(s) references, JS syntax valid (run node --check on extracted script or new Function(js)).
+Deliver via present_files; if local, remind: export JSON backup regularly; offer deploy-to-online when 资料库 recovers.
+Iterate: add at most 1 module or 1 style change per round; keep localStorage keys backward-compatible.
+References
+references/rules_and_logic.md — full rule set, calculation pseudocode, sample-data seeding approach.
+assets/restart50_workspace.html — the working single-file HTML template (copy & customize RULES array).

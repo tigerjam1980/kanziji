@@ -1,0 +1,20 @@
+人生重启系统（10 次心理引导）
+
+这是本项目的中文使用摘要。完整说明请查看 README.md。
+
+主要命令：
+
+/life              开始或继续
+/life status       查看进度
+/life session N    进入第 N 次主题
+/life reset        重置进度
+
+脚本示例：
+
+bash scripts/handler.sh start zh "$WORKSPACE"
+bash scripts/handler.sh status "$WORKSPACE"
+bash scripts/handler.sh save "我的回答" "$WORKSPACE"
+bash scripts/export.sh "$WORKSPACE"
+
+默认语言：中文（zh）
+兼容语言：英文（en）、俄文（ru）
