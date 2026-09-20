@@ -1,0 +1,9 @@
+# Local runtime data
+memory/
+
+# Temporary files
+*.tmp
+*.swp
+
+# The source PDF may contain copyrighted third-party text.
+如何在一天之内修复你整个人生.pdf
