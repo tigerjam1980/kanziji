@@ -15,6 +15,7 @@ DATA_DIR="$WORKSPACE/memory/life-architect"
 STATE_FILE="$DATA_DIR/state.json"
 SESSIONS_DIR="$SKILL_DIR/references/sessions"
 LOCK_FILE="$DATA_DIR/.lock"
+LOCK_DIR="$DATA_DIR/.lock.d"
 mkdir -p "$DATA_DIR"
 
 TITLES_EN=("" "The Anti-Vision Architect" "The Hidden Goal Decoder" "The Identity Construction Tracer" "The Lifestyle-Outcome Alignment Auditor" "The Dissonance Engine" "The Cybernetic Debugger" "The Ego Stage Navigator" "The Game Architecture Engineer" "The Conditioning Excavator" "The One-Day Reset Architect")
@@ -23,12 +24,20 @@ TITLES_ZH=("" "反愿景设计师" "隐藏目标解码器" "身份建构追踪�
 
 # File locking for concurrent access safety
 acquire_lock() {
-    exec 200>"$LOCK_FILE"
-    flock -n 200 || { echo '{"status":"error","message":"Another operation in progress"}'; exit 1; }
+    if command -v flock >/dev/null 2>&1; then
+        exec 200>"$LOCK_FILE"
+        flock -n 200 || { echo '{"status":"error","message":"Another operation in progress"}'; exit 1; }
+    else
+        mkdir "$LOCK_DIR" 2>/dev/null || { echo '{"status":"error","message":"Another operation in progress"}'; exit 1; }
+    fi
 }
 
 release_lock() {
-    flock -u 200 2>/dev/null || true
+    if command -v flock >/dev/null 2>&1; then
+        flock -u 200 2>/dev/null || true
+    else
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+    fi
 }
 
 trap release_lock EXIT
@@ -188,9 +197,25 @@ output_with_completion() {
     local done=$(jq '[.sessions[]|select(.status=="completed")]|length' "$STATE_FILE")
     local all_done="false"
     [[ "$done" -eq 10 ]] && all_done="true"
+    local final_document=""
+
+    if [[ "$all_done" == "true" ]]; then
+        local export_result
+        if ! export_result=$(bash "$SCRIPT_DIR/export.sh" "$WORKSPACE"); then
+            jq -n --arg message "All sessions are complete, but final-document.md could not be generated. Run scripts/export.sh to retry." \
+                '{status:"error",message:$message}'
+            return 1
+        fi
+
+        final_document=$(jq -er 'select(.status=="ok" and .completedSessions==10) | .path' <<< "$export_result") || {
+            jq -n --arg message "All sessions are complete, but the export script returned an invalid result." \
+                '{status:"error",message:$message}'
+            return 1
+        }
+    fi
     
-    jq -n --argjson s "$s" --argjson p "$p" --argjson tp "$tp" --arg t "$t" --arg l "$l" --arg c "$c" --argjson done "$done" --argjson allDone "$all_done" --argjson sessionCompleted "$completed" \
-        '{status:"ok",session:$s,phase:$p,totalPhases:$tp,title:$t,lang:$l,content:$c,completedSessions:$done,allComplete:$allDone,sessionJustCompleted:$sessionCompleted}'
+    jq -n --argjson s "$s" --argjson p "$p" --argjson tp "$tp" --arg t "$t" --arg l "$l" --arg c "$c" --argjson done "$done" --argjson allDone "$all_done" --argjson sessionCompleted "$completed" --arg finalDocument "$final_document" \
+        '{status:"ok",session:$s,phase:$p,totalPhases:$tp,title:$t,lang:$l,content:$c,completedSessions:$done,allComplete:$allDone,sessionJustCompleted:$sessionCompleted,finalDocumentPath:(if $allDone then $finalDocument else null end)}'
 }
 
 do_status() {
